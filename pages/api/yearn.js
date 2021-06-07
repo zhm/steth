@@ -1,4 +1,6 @@
-const Web3 = require('web3')
+const Web3 = require('web3');
+const axios = require('axios');
+const table = require('text-table');
 
 const web3 = new Web3(new Web3.providers.HttpProvider('https://mainnet.infura.io/v3/7ef3a3fcd9fc4aec88df4e79f758a3e4'));
 
@@ -30,13 +32,99 @@ export default (req, res) => {
         const pricePerShare = web3.utils.fromWei(pricePerShareResult, 'ether');
         const balance = +web3.utils.fromWei(balanceOfResult, 'ether');
 
-        res.json({
-          eth: balance * pricePerShare * virtualPrice,
-          curveVirtualPrice: virtualPrice,
-          curveBalance: balance * pricePerShare,
-          yearnSharePrice: pricePerShare,
-          yearnBalance: balance
-        });
+        let performance = {
+          deposit: null,
+          depositDate: null,
+          ethProfitPercent: null,
+          ethProfit: null,
+          ethProfitUSD: null,
+          ethProfitPerWeek: null,
+          ethProfitPerWeekUSD: null,
+          ethProfitPerDay: null,
+          ethProfitPerDayUSD: null,
+          ethProfitPerHour: null,
+          ethProfitPerHourUSD: null
+        };
+
+        const deposit = req.query.deposit != null ? +req.query.deposit : null;
+        const depositDate = req.query.since != null ? new Date(req.query.since) : null;
+
+        axios.get('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd')
+          .then(response => {
+            const totalBalance = balance * pricePerShare * virtualPrice;
+
+            let results = {
+              eth: totalBalance,
+              ethPrice: response.data.ethereum.usd,
+              value: totalBalance * response.data.ethereum.usd,
+              curveVirtualPrice: virtualPrice,
+              curveBalance: balance * pricePerShare,
+              yearnSharePrice: pricePerShare,
+              yearnBalance: balance
+            };
+
+            if (deposit && depositDate) {
+              performance.deposit = deposit;
+              performance.depositDate = depositDate.toISOString();
+              performance.ethProfit = results.eth - performance.deposit;
+              performance.ethProfitUSD = '$' + (performance.ethProfit * results.ethPrice).toFixed(2);
+              performance.ethProfitPercent = (((results.eth - performance.deposit) / results.eth) * 100).toFixed(2) + '%';
+    
+              const duration = (Date.now() - depositDate.getTime()) / 1000.0;
+              const weeks = duration / (24 * 60 * 60 * 7);
+              const days = duration / (24 * 60 * 60);
+              const hours = duration / (24 * 60);
+    
+              performance.ethProfitPerWeek = performance.ethProfit / weeks;
+              performance.ethProfitPerWeekUSD = '$' + (performance.ethProfitPerWeek * results.ethPrice).toFixed(2);
+
+              performance.ethProfitPerDay = performance.ethProfit / days;
+              performance.ethProfitPerDayUSD = '$' + (performance.ethProfitPerDay * results.ethPrice).toFixed(2);
+              
+              performance.ethProfitPerHour = performance.ethProfit / hours;
+              performance.ethProfitPerHourUSD = '$' + (performance.ethProfitPerHour * results.ethPrice).toFixed(2)
+            }
+    
+            if (req.query.output !== 'json') {
+              const LABELS = {
+                eth: 'Total ETH',
+                value: 'Total USD',
+                ethPrice: 'ETH Price',
+                curveVirtualPrice: 'Curve Virtual Price',
+                curveBalance: 'Curve Balance',
+                yearnSharePrice: 'Yearn Share Price',
+                yearnBalance: 'Yearn Balance',
+                deposit: 'Deposit',
+                depositDate: 'Deposit Date',
+                ethProfitPercent: 'Profit %',
+                ethProfit: 'Profit (ETH)',
+                ethProfitUSD: 'Profit (USD)',
+                ethProfitPerWeek: 'Profit/Week (ETH)',
+                ethProfitPerWeekUSD: 'Profit/Week (USD)',
+                ethProfitPerDay: 'Profit/Day (ETH)',
+                ethProfitPerDayUSD: 'Profit/Day (USD)',
+                ethProfitPerHour: 'Profit/Hour (ETH)',
+                ethProfitPerHourUSD: 'Profit/Hour (USD)',
+              };
+
+              const rows = [];
+
+              for (const key of Object.keys(results)) {
+                rows.push([ LABELS[key], results[key] || '' ]);
+              }
+
+              for (const key of Object.keys(performance)) {
+                rows.push([ LABELS[key], performance[key] || '' ]);
+              }
+
+              res.end(table(rows));
+            } else {
+              res.json({ ...performance, ...results });
+            }
+          })
+          .catch(error => {
+            console.log(error);
+          });
       });
     });
   });

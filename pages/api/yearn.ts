@@ -74,9 +74,5 @@ export default async (req, res) => {
     rows.push([ LABELS[key], results[key] || '' ]);
   }
 
-  for (const key of Object.keys(performance)) {
-    rows.push([ LABELS[key], performance[key] || '' ]);
-  }
-
   res.end(table(rows));
 }

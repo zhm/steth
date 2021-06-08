@@ -9,7 +9,8 @@ export const YEARN_STETH_ADDRESS = '0xdcd90c7f6324cfa40d7169ef80b12031770b4325';
 export default async (req, res) => {
   res.statusCode = 200;
 
-  const yesterday = Math.floor((Date.now() - (24 * 60 * 60 * 1000)) / 1000);
+  const days = req.query.days ? +req.query.days : 3;
+  const yesterday = Math.floor((Date.now() - (days * 24 * 60 * 60 * 1000)) / 1000);
 
   const block = (await axios.get(`https://api.blockbydate.com/api/block_by_date?date=${ yesterday }&network=ETHEREUM`)).data
 
@@ -34,7 +35,7 @@ export default async (req, res) => {
   const totalBalance = toNumber(currentPosition.balanceShares) * toNumber(currentPosition.vault.latestUpdate.pricePerShare) * +currentPool.virtualPrice;
   const totalBalanceYesterday = toNumber(yesterdayPosition.balanceShares) * toNumber(yesterdayPosition.vault.latestUpdate.pricePerShare) * +yesterdayPool.virtualPrice;
   
-  const ethProfit = totalBalance - totalBalanceYesterday;
+  const ethProfit = (totalBalance - totalBalanceYesterday) / days;
 
   const apr2apy = (apr) => Math.pow(1 + apr, 365) - 1;
 

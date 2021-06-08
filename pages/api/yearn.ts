@@ -36,6 +36,11 @@ export default async (req, res) => {
   
   const ethProfit = totalBalance - totalBalanceYesterday;
 
+  const apr2apy = (apr) => Math.pow(1 + apr, 365) - 1;
+
+  const apr = ethProfit / totalBalance;
+  const apy = apr2apy(apr);
+
   const results = {
     eth: totalBalance,
     ethPrice: ethPrice,
@@ -44,6 +49,8 @@ export default async (req, res) => {
     curveBalance: toNumber(yesterdayPosition.balancePosition),
     yearnSharePrice: toNumber(currentPosition.vault.latestUpdate.pricePerShare),
     yearnBalance: toNumber(currentPosition.balanceShares),
+    apr: (apr * 365 * 100).toFixed(2) + '%',
+    apy: (apy * 100).toFixed(2) + '%',
     ethProfitPerWeekUSD: '$' + (ethProfit * ethPrice * 7).toFixed(2),
     ethProfitPerDayUSD: '$' + (ethProfit * ethPrice).toFixed(2),
     ethProfitPerHourUSD: '$' + (ethProfit * ethPrice / 24).toFixed(2),
@@ -60,6 +67,8 @@ export default async (req, res) => {
     curveBalance: 'Curve Balance',
     yearnSharePrice: 'Yearn Share Price',
     yearnBalance: 'Yearn Balance',
+    apr: 'APR',
+    apy: 'APY',
     ethProfitPerWeekUSD: 'Profit/Week (USD)',
     ethProfitPerDayUSD: 'Profit/Day (USD)',
     ethProfitPerHourUSD: 'Profit/Hour (USD)',

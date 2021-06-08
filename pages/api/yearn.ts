@@ -9,7 +9,7 @@ export const YEARN_STETH_ADDRESS = '0xdcd90c7f6324cfa40d7169ef80b12031770b4325';
 export default async (req, res) => {
   res.statusCode = 200;
 
-  const yesterday = parseInt((Date.now() - (24 * 60 * 60 * 1000)) / 1000);
+  const yesterday = Math.floor((Date.now() - (24 * 60 * 60 * 1000)) / 1000);
 
   const block = (await axios.get(`https://api.blockbydate.com/api/block_by_date?date=${ yesterday }&network=ETHEREUM`)).data
 

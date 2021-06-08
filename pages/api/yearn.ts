@@ -1,13 +1,10 @@
-const Web3 = require('web3');
-const axios = require('axios');
-const table = require('text-table');
+import axios from 'axios';
+import table from 'text-table';
 
 import { queryVault } from './yearn-graph';
 import { queryPool } from './curve-graph';
 
-export const YEARN_STETH_ADDRESS = "0xdcd90c7f6324cfa40d7169ef80b12031770b4325";
-
-const web3 = new Web3(new Web3.providers.HttpProvider('https://mainnet.infura.io/v3/7ef3a3fcd9fc4aec88df4e79f758a3e4'));
+export const YEARN_STETH_ADDRESS = '0xdcd90c7f6324cfa40d7169ef80b12031770b4325';
 
 export default async (req, res) => {
   res.statusCode = 200;
@@ -47,12 +44,12 @@ export default async (req, res) => {
     curveBalance: toNumber(yesterdayPosition.balancePosition),
     yearnSharePrice: toNumber(currentPosition.vault.latestUpdate.pricePerShare),
     yearnBalance: toNumber(currentPosition.balanceShares),
-    ethProfitPerWeek: ethProfit * 7,
     ethProfitPerWeekUSD: '$' + (ethProfit * ethPrice * 7).toFixed(2),
-    ethProfitPerDay: ethProfit,
     ethProfitPerDayUSD: '$' + (ethProfit * ethPrice).toFixed(2),
-    ethProfitPerHour: ethProfit / 24,
-    ethProfitPerHourUSD: '$' + (ethProfit * ethPrice / 24).toFixed(2)
+    ethProfitPerHourUSD: '$' + (ethProfit * ethPrice / 24).toFixed(2),
+    ethProfitPerWeek: ethProfit * 7,
+    ethProfitPerDay: ethProfit,
+    ethProfitPerHour: ethProfit / 24
   };
 
   const LABELS = {
@@ -63,12 +60,12 @@ export default async (req, res) => {
     curveBalance: 'Curve Balance',
     yearnSharePrice: 'Yearn Share Price',
     yearnBalance: 'Yearn Balance',
-    ethProfitPerWeek: 'Profit/Week (ETH)',
     ethProfitPerWeekUSD: 'Profit/Week (USD)',
-    ethProfitPerDay: 'Profit/Day (ETH)',
     ethProfitPerDayUSD: 'Profit/Day (USD)',
-    ethProfitPerHour: 'Profit/Hour (ETH)',
     ethProfitPerHourUSD: 'Profit/Hour (USD)',
+    ethProfitPerWeek: 'Profit/Week (ETH)',
+    ethProfitPerDay: 'Profit/Day (ETH)',
+    ethProfitPerHour: 'Profit/Hour (ETH)'
   };
 
   const rows = [];

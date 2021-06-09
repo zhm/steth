@@ -10,36 +10,39 @@ export default async (req, res) => {
   res.statusCode = 200;
 
   const days = req.query.days ? +req.query.days : 3;
-  const yesterday = Math.floor((Date.now() - (days * 24 * 60 * 60 * 1000)) / 1000);
+  const previous = Math.floor((Date.now() - (days * 24 * 60 * 60 * 1000)) / 1000);
 
-  const block = (await axios.get(`https://api.blockbydate.com/api/block_by_date?date=${ yesterday }&network=ETHEREUM`)).data
+  const block = (await axios.get(`https://api.blockbydate.com/api/block_by_date?date=${ previous }&network=ETHEREUM`)).data
 
   const currentAccount = (await queryVault(req.query.address, null)).data;
-  const yesterdayAccount = (await queryVault(req.query.address, block)).data;
+  const previousAccount = (await queryVault(req.query.address, block)).data;
 
   const currentPosition = currentAccount.accounts[0].vaultPositions.find(position => {
     return position.vault.id === YEARN_STETH_ADDRESS;
   });
 
-  const yesterdayPosition = yesterdayAccount.accounts[0].vaultPositions.find(position => {
+  const previousPosition = previousAccount.accounts[0].vaultPositions.find(position => {
     return position.vault.id === YEARN_STETH_ADDRESS;
   });
 
   const currentPool = (await queryPool('steth', null)).data.pools[0];
-  const yesterdayPool = (await queryPool('steth', block)).data.pools[0];
+  const previousPool = (await queryPool('steth', block)).data.pools[0];
 
   const ethPrice = (await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd')).data.ethereum.usd;
 
   const toNumber = value => +value / 10e17;
 
   const totalBalance = toNumber(currentPosition.balanceShares) * toNumber(currentPosition.vault.latestUpdate.pricePerShare) * +currentPool.virtualPrice;
-  const totalBalanceYesterday = toNumber(yesterdayPosition.balanceShares) * toNumber(yesterdayPosition.vault.latestUpdate.pricePerShare) * +yesterdayPool.virtualPrice;
+  const totalBalanceYesterday = toNumber(previousPosition.balanceShares) * toNumber(previousPosition.vault.latestUpdate.pricePerShare) * +previousPool.virtualPrice;
   
-  const ethProfit = (totalBalance - totalBalanceYesterday) / days;
+  const ethProfitPerDay = (totalBalance - totalBalanceYesterday) / days;
 
-  const apr2apy = (apr) => Math.pow(1 + apr, 365) - 1;
+  const compoundingPeriodsPerDay = 1;
+  const compoundingPeriods = 365 * compoundingPeriodsPerDay;
 
-  const apr = ethProfit / totalBalance;
+  const apr2apy = (apr) => Math.pow(1 + (apr / compoundingPeriods), compoundingPeriods) - 1;
+
+  const apr = ((ethProfitPerDay / totalBalance) / compoundingPeriodsPerDay) * compoundingPeriods;
   const apy = apr2apy(apr);
 
   const results = {
@@ -47,17 +50,17 @@ export default async (req, res) => {
     ethPrice: ethPrice,
     value: totalBalance * ethPrice,
     curveVirtualPrice: +currentPool.virtualPrice,
-    curveBalance: toNumber(yesterdayPosition.balancePosition),
+    curveBalance: toNumber(previousPosition.balancePosition),
     yearnSharePrice: toNumber(currentPosition.vault.latestUpdate.pricePerShare),
     yearnBalance: toNumber(currentPosition.balanceShares),
-    apr: (apr * 365 * 100).toFixed(2) + '%',
+    apr: (apr * 100).toFixed(2) + '%',
     apy: (apy * 100).toFixed(2) + '%',
-    ethProfitPerWeekUSD: '$' + (ethProfit * ethPrice * 7).toFixed(2),
-    ethProfitPerDayUSD: '$' + (ethProfit * ethPrice).toFixed(2),
-    ethProfitPerHourUSD: '$' + (ethProfit * ethPrice / 24).toFixed(2),
-    ethProfitPerWeek: ethProfit * 7,
-    ethProfitPerDay: ethProfit,
-    ethProfitPerHour: ethProfit / 24
+    ethProfitPerWeekUSD: '$' + (ethProfitPerDay * ethPrice * 7).toFixed(2),
+    ethProfitPerDayUSD: '$' + (ethProfitPerDay * ethPrice).toFixed(2),
+    ethProfitPerHourUSD: '$' + (ethProfitPerDay * ethPrice / 24).toFixed(2),
+    ethProfitPerWeek: ethProfitPerDay * 7,
+    ethProfitPerDay: ethProfitPerDay,
+    ethProfitPerHour: ethProfitPerDay / 24
   };
 
   const LABELS = {
